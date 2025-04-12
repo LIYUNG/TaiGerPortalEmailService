@@ -7,6 +7,7 @@ import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as iam from "aws-cdk-lib/aws-iam";
 
 import { APPLICATION_NAME } from "../configuration";
+import { join } from "path";
 
 interface LambdaStackProps extends cdk.StackProps {
     stageName: string;
@@ -57,19 +58,18 @@ export class LambdaStack extends cdk.Stack {
             {
                 functionName: `${APPLICATION_NAME}-${props.stageName}`,
                 runtime: Runtime.NODEJS_20_X,
-                handler: "index.handler",
                 entry: "src/index.ts",
+                handler: "handler",
                 environment: {
                     ENV_VARIABLE: props.stageName
                 },
                 bundling: {
+                    esbuildArgs: { "--bundle": true },
+                    target: "es2020",
+                    platform: "node",
                     externalModules: ["@aws-sdk/client-ses", "@aws-sdk/client-sqs"],
-                    tsconfig: "tsconfig.lambda-logic.json", // Explicitly specify TypeScript config
                     minify: true,
-                    esbuildArgs: {
-                        "--bundle": true,
-                        "--platform": "node"
-                    }
+                    tsconfig: join(__dirname, "../../tsconfig.lambda-logic.json")
                 },
                 architecture: cdk.aws_lambda.Architecture.ARM_64,
                 memorySize: 128,
