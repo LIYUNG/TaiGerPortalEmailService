@@ -1,5 +1,5 @@
 import * as cdk from "aws-cdk-lib";
-import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
+import { Runtime, Tracing } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
@@ -57,8 +57,8 @@ export class LambdaStack extends cdk.Stack {
             {
                 functionName: `${APPLICATION_NAME}-${props.stageName}`,
                 runtime: Runtime.NODEJS_20_X,
-                code: Code.fromAsset("src"),
-                handler: "index.handler",
+                entry: "dist/src/index.js",
+                handler: "handler",
                 environment: {
                     ENV_VARIABLE: props.stageName
                 },
@@ -70,7 +70,8 @@ export class LambdaStack extends cdk.Stack {
                 },
                 architecture: cdk.aws_lambda.Architecture.ARM_64,
                 memorySize: 128,
-                timeout: cdk.Duration.seconds(120)
+                timeout: cdk.Duration.seconds(120),
+                tracing: Tracing.ACTIVE
             }
         );
 
