@@ -1,13 +1,10 @@
 import * as cdk from "aws-cdk-lib";
-import { Alias, Code, SnapStartConf, Version } from "aws-cdk-lib/aws-lambda";
+import { Code, Runtime } from "aws-cdk-lib/aws-lambda";
 import { Construct } from "constructs";
-import { Function, Runtime } from "aws-cdk-lib/aws-lambda";
-import {
-    AuthorizationType,
-    LambdaIntegration,
-    MethodOptions,
-    RestApi
-} from "aws-cdk-lib/aws-apigateway";
+import * as sqs from "aws-cdk-lib/aws-sqs";
+import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
+import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import * as iam from "aws-cdk-lib/aws-iam";
 
 import { APPLICATION_NAME } from "../configuration";
 
@@ -17,82 +14,117 @@ interface LambdaStackProps extends cdk.StackProps {
 }
 
 export class LambdaStack extends cdk.Stack {
+    public readonly queueSendMessagePolicy: iam.PolicyStatement; // Policy for sending messages
+    public readonly deadLetterQueue: sqs.Queue; // Expose DLQ for monitoring stack
+
     constructor(scope: Construct, id: string, props: LambdaStackProps) {
         super(scope, id, props);
 
-        const lambdaFunction = new Function(
+        // Create Dead Letter Queue
+        this.deadLetterQueue = new sqs.Queue(this, `${APPLICATION_NAME}-DLQ-${props.stageName}`, {
+            queueName: `${APPLICATION_NAME}-DLQ-${props.stageName}`,
+            visibilityTimeout: cdk.Duration.seconds(300),
+            retentionPeriod: cdk.Duration.days(14),
+            encryption: sqs.QueueEncryption.SQS_MANAGED,
+            enforceSSL: true,
+            removalPolicy: props.isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY
+        });
+
+        // Create main SQS Queue with DLQ configuration
+        const emailQueue = new sqs.Queue(this, `${APPLICATION_NAME}-Queue-${props.stageName}`, {
+            queueName: `${APPLICATION_NAME}-${props.stageName}`,
+            visibilityTimeout: cdk.Duration.seconds(30),
+            retentionPeriod: cdk.Duration.days(14),
+            encryption: sqs.QueueEncryption.SQS_MANAGED,
+            enforceSSL: true,
+            removalPolicy: props.isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+            deadLetterQueue: {
+                queue: this.deadLetterQueue,
+                maxReceiveCount: 3 // Number of times a message can be received before being sent to DLQ
+            }
+        });
+
+        // Create a policy statement for sending messages to the queue
+        this.queueSendMessagePolicy = new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["sqs:SendMessage", "sqs:SendMessageBatch"],
+            resources: [emailQueue.queueArn]
+        });
+
+        const lambdaFunction = new NodejsFunction(
             this,
             `${APPLICATION_NAME}-Function-${props.stageName}`,
             {
                 functionName: `${APPLICATION_NAME}-${props.stageName}`,
-                runtime: Runtime.PYTHON_3_12, // Using python 3.12 or above runtime
-                code: Code.fromInline(`
-import json
-import os
-
-def lambda_handler(event, context):
-    print("Received event:", json.dumps(event, indent=2))
-
-    # Access environment variables
-    ENV_VARIABLE = os.getenv("ENV_VARIABLE")
-
-    print("Environment Variables:")
-    print(f"ENV_VARIABLE: {ENV_VARIABLE}")
-
-
-    return {
-        "statusCode": 200,
-        "body": json.dumps({"message": "Hello from inline Python Lambda!"}),
-    }
-`),
-                handler: "index.lambda_handler",
-                architecture: cdk.aws_lambda.Architecture.ARM_64,
-                memorySize: 128,
-                timeout: cdk.Duration.seconds(300),
+                runtime: Runtime.NODEJS_20_X,
+                code: Code.fromAsset("src"),
+                handler: "index.handler",
                 environment: {
                     ENV_VARIABLE: props.stageName
                 },
-                snapStart: SnapStartConf.ON_PUBLISHED_VERSIONS // Enable SnapStart
+                bundling: {
+                    externalModules: ["@aws-sdk/client-ses", "@aws-sdk/client-sqs"],
+                    minify: true,
+                    sourceMap: true,
+                    target: "es2020"
+                },
+                architecture: cdk.aws_lambda.Architecture.ARM_64,
+                memorySize: 128,
+                timeout: cdk.Duration.seconds(300)
             }
         );
 
-        // Explicitly publish a new Lambda version
-        const lambdaVersion = new Version(this, `LambdaVersion-${props.stageName}`, {
-            lambda: lambdaFunction
-        });
+        // Grant SES permissions to Lambda
+        lambdaFunction.addToRolePolicy(
+            new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                actions: ["ses:SendEmail", "ses:SendRawEmail"],
+                resources: ["*"] // You might want to restrict this to specific ARNs in production
+            })
+        );
 
-        // Alias pointing to the latest published version
-        const lambdaAlias = new Alias(this, `LambdaAlias-${props.stageName}`, {
-            aliasName: "live",
-            version: lambdaVersion
-        });
+        // Add SQS event source to Lambda
+        lambdaFunction.addEventSource(
+            new lambdaEventSources.SqsEventSource(emailQueue, {
+                batchSize: 1,
+                maxBatchingWindow: cdk.Duration.seconds(30)
+            })
+        );
 
-        // Step 2: Create API Gateway
-        const api = new RestApi(this, `${APPLICATION_NAME}-APIG-${props.stageName}`, {
-            restApiName: `${APPLICATION_NAME}-${props.stageName}`,
-            description: "This service handles requests with Lambda.",
-            deployOptions: {
-                stageName: props.stageName // Your API stage
-            }
-        });
+        // Grant Lambda permission to consume messages from SQS
+        emailQueue.grantConsumeMessages(lambdaFunction);
 
-        // Lambda integration
-        const lambdaIntegration = new LambdaIntegration(lambdaAlias, {
-            proxy: true // Proxy all requests to the Lambda
-        });
+        emailQueue.addToResourcePolicy(
+            new iam.PolicyStatement({
+                effect: iam.Effect.ALLOW,
+                principals: [
+                    // Allow access from specific IAM role
+                    new iam.ArnPrincipal(
+                        `arn:aws:iam::086026665560:role/TaiGerPortalService-${props?.stageName}-ExecutionRole`
+                    )
+                ],
+                actions: ["sqs:SendMessage"],
+                resources: [emailQueue.queueArn]
+            })
+        );
 
-        // Define IAM authorization for the API Gateway method
-        const methodOptions: MethodOptions = {
-            authorizationType: AuthorizationType.IAM // Require SigV4 signed requests
-        };
-
-        // Create a resource and method in API Gateway
-        const lambdaHelloWorld = api.root.addResource("hello");
-        lambdaHelloWorld.addMethod("GET", lambdaIntegration, methodOptions);
+        if (!props.isProd) {
+            // Add queue policy to allow sending messages
+            emailQueue.addToResourcePolicy(
+                new iam.PolicyStatement({
+                    effect: iam.Effect.ALLOW,
+                    principals: [
+                        // Allow access from specific user (for testing)
+                        new iam.ArnPrincipal("arn:aws:iam::086026665560:user/taiger_leo")
+                    ],
+                    actions: ["sqs:SendMessage"],
+                    resources: [emailQueue.queueArn]
+                })
+            );
+        }
 
         // Cost center tag
-        cdk.Tags.of(lambdaFunction).add("Project", "Example");
+        cdk.Tags.of(lambdaFunction).add("Project", "TaiGerPortalEmailService");
         cdk.Tags.of(lambdaFunction).add("Environment", "Production");
-        cdk.Tags.of(api).add("CostCenter", "LambdaService");
     }
 }

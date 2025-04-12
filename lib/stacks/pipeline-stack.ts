@@ -53,11 +53,13 @@ export class PipelineStack extends cdk.Stack {
             }
         });
 
-        STAGES.forEach(({ stageName, env, isProd }) => {
+        STAGES.forEach(({ stageName, env, isProd, sesAttr, domainAttr }) => {
             const stage = new PipelineAppStage(this, `${stageName}-${APPLICATION_NAME}`, {
                 env,
                 stageName,
-                isProd
+                isProd,
+                sesAttr,
+                domainAttr
             });
             if (isProd) {
                 pipeline.addStage(stage, {
