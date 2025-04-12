@@ -87,7 +87,7 @@ export class LambdaStack extends cdk.Stack {
         lambdaFunction.addEventSource(
             new lambdaEventSources.SqsEventSource(emailQueue, {
                 batchSize: 1,
-                maxBatchingWindow: cdk.Duration.seconds(30)
+                maxBatchingWindow: cdk.Duration.seconds(120)
             })
         );
 
