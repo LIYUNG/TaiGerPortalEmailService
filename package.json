@@ -1,6 +1,8 @@
 {
     "name": "taiger_portal_email_service_cdk",
     "version": "0.1.0",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "bin": {
         "taiger_portal_email_service_cdk": "bin/taiger_portal_email_service_cdk.js"
     },

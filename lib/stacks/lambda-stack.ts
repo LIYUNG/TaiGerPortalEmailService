@@ -57,16 +57,19 @@ export class LambdaStack extends cdk.Stack {
             {
                 functionName: `${APPLICATION_NAME}-${props.stageName}`,
                 runtime: Runtime.NODEJS_20_X,
-                entry: "dist/src/index.js",
-                handler: "handler",
+                handler: "index.handler",
+                entry: "src/index.ts",
                 environment: {
                     ENV_VARIABLE: props.stageName
                 },
                 bundling: {
                     externalModules: ["@aws-sdk/client-ses", "@aws-sdk/client-sqs"],
+                    tsconfig: "tsconfig.lambda-logic.json", // Explicitly specify TypeScript config
                     minify: true,
-                    sourceMap: true,
-                    target: "es2020"
+                    esbuildArgs: {
+                        "--bundle": true,
+                        "--platform": "node"
+                    }
                 },
                 architecture: cdk.aws_lambda.Architecture.ARM_64,
                 memorySize: 128,
