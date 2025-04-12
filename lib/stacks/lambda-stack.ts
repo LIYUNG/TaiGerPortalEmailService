@@ -94,19 +94,20 @@ export class LambdaStack extends cdk.Stack {
         // Grant Lambda permission to consume messages from SQS
         emailQueue.grantConsumeMessages(lambdaFunction);
 
-        emailQueue.addToResourcePolicy(
-            new iam.PolicyStatement({
-                effect: iam.Effect.ALLOW,
-                principals: [
-                    // Allow access from specific IAM role
-                    new iam.ArnPrincipal(
-                        `arn:aws:iam::669131042313:role/TaiGerPortalService-${props?.stageName}-ExecutionRole`
-                    )
-                ],
-                actions: ["sqs:SendMessage"],
-                resources: [emailQueue.queueArn]
-            })
-        );
+        // TODO: pending backend ready
+        // emailQueue.addToResourcePolicy(
+        //     new iam.PolicyStatement({
+        //         effect: iam.Effect.ALLOW,
+        //         principals: [
+        //             // Allow access from specific IAM role
+        //             new iam.ArnPrincipal(
+        //                 `arn:aws:iam::669131042313:role/TaiGerPortalService-${props?.stageName}-ExecutionRole`
+        //             )
+        //         ],
+        //         actions: ["sqs:SendMessage"],
+        //         resources: [emailQueue.queueArn]
+        //     })
+        // );
 
         if (!props.isProd) {
             // Add queue policy to allow sending messages
