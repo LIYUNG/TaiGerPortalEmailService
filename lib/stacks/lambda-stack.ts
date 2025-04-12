@@ -23,7 +23,7 @@ export class LambdaStack extends cdk.Stack {
         // Create Dead Letter Queue
         this.deadLetterQueue = new sqs.Queue(this, `${APPLICATION_NAME}-DLQ-${props.stageName}`, {
             queueName: `${APPLICATION_NAME}-DLQ-${props.stageName}`,
-            visibilityTimeout: cdk.Duration.seconds(300),
+            visibilityTimeout: cdk.Duration.seconds(120),
             retentionPeriod: cdk.Duration.days(14),
             encryption: sqs.QueueEncryption.SQS_MANAGED,
             enforceSSL: true,
@@ -33,7 +33,7 @@ export class LambdaStack extends cdk.Stack {
         // Create main SQS Queue with DLQ configuration
         const emailQueue = new sqs.Queue(this, `${APPLICATION_NAME}-Queue-${props.stageName}`, {
             queueName: `${APPLICATION_NAME}-${props.stageName}`,
-            visibilityTimeout: cdk.Duration.seconds(30),
+            visibilityTimeout: cdk.Duration.seconds(120),
             retentionPeriod: cdk.Duration.days(14),
             encryption: sqs.QueueEncryption.SQS_MANAGED,
             enforceSSL: true,
@@ -70,7 +70,7 @@ export class LambdaStack extends cdk.Stack {
                 },
                 architecture: cdk.aws_lambda.Architecture.ARM_64,
                 memorySize: 128,
-                timeout: cdk.Duration.seconds(300)
+                timeout: cdk.Duration.seconds(120)
             }
         );
 
