@@ -4,10 +4,10 @@ import { Construct } from "constructs";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 import * as lambdaEventSources from "aws-cdk-lib/aws-lambda-event-sources";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
+import { Alias } from "aws-cdk-lib/aws-lambda";
 import * as iam from "aws-cdk-lib/aws-iam";
 
 import { APPLICATION_NAME } from "../configuration";
-import { join } from "path";
 
 interface LambdaStackProps extends cdk.StackProps {
     stageName: string;
@@ -68,8 +68,7 @@ export class LambdaStack extends cdk.Stack {
                     target: "es2020",
                     platform: "node",
                     externalModules: ["@aws-sdk/client-ses", "@aws-sdk/client-sqs"],
-                    minify: true,
-                    tsconfig: join(__dirname, "../../tsconfig.lambda-logic.json")
+                    minify: true
                 },
                 architecture: cdk.aws_lambda.Architecture.ARM_64,
                 memorySize: 128,
@@ -78,8 +77,13 @@ export class LambdaStack extends cdk.Stack {
             }
         );
 
+        const lambdaAlias = new Alias(this, `${APPLICATION_NAME}-LambdaAlias-${props.stageName}`, {
+            aliasName: "live",
+            version: lambdaFunction.currentVersion
+        });
+
         // Grant SES permissions to Lambda
-        lambdaFunction.addToRolePolicy(
+        lambdaAlias.addToRolePolicy(
             new iam.PolicyStatement({
                 effect: iam.Effect.ALLOW,
                 actions: ["ses:SendEmail", "ses:SendRawEmail"],
@@ -88,7 +92,7 @@ export class LambdaStack extends cdk.Stack {
         );
 
         // Add SQS event source to Lambda
-        lambdaFunction.addEventSource(
+        lambdaAlias.addEventSource(
             new lambdaEventSources.SqsEventSource(emailQueue, {
                 batchSize: 1,
                 maxBatchingWindow: cdk.Duration.seconds(120)
@@ -96,7 +100,7 @@ export class LambdaStack extends cdk.Stack {
         );
 
         // Grant Lambda permission to consume messages from SQS
-        emailQueue.grantConsumeMessages(lambdaFunction);
+        emailQueue.grantConsumeMessages(lambdaAlias);
 
         // TODO: pending backend ready
         // emailQueue.addToResourcePolicy(
@@ -129,7 +133,7 @@ export class LambdaStack extends cdk.Stack {
         }
 
         // Cost center tag
-        cdk.Tags.of(lambdaFunction).add("Project", "TaiGerPortalEmailService");
-        cdk.Tags.of(lambdaFunction).add("Environment", "Production");
+        cdk.Tags.of(lambdaAlias).add("Project", "TaiGerPortalEmailService");
+        cdk.Tags.of(lambdaAlias).add("Environment", "Production");
     }
 }

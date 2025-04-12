@@ -2,7 +2,6 @@ import { SQSEvent } from "aws-lambda";
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { EmailMessage } from "./types";
 import { getInvitationTemplate } from "./templates/invitationTemplate";
-// import { getForgotPasswordTemplate } from "./templates/forgotPasswordTemplate";
 
 const sesClient = new SESClient({});
 
