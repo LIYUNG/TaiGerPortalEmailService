@@ -10,4 +10,4 @@ export const DEVELOPER_EMAIL = "taiger.leoc@gmail.com";
 export const DOMAIN_NAME = "taigerconsultancy-portal.com";
 export const DOMAIN_ZONE_ID = "Z08841911XEWSGPCLIELI";
 
-export const AWS_ACCOUNT = "086026665560";
+export const AWS_ACCOUNT = "669131042313";

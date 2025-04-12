@@ -100,7 +100,7 @@ export class LambdaStack extends cdk.Stack {
                 principals: [
                     // Allow access from specific IAM role
                     new iam.ArnPrincipal(
-                        `arn:aws:iam::086026665560:role/TaiGerPortalService-${props?.stageName}-ExecutionRole`
+                        `arn:aws:iam::669131042313:role/TaiGerPortalService-${props?.stageName}-ExecutionRole`
                     )
                 ],
                 actions: ["sqs:SendMessage"],
@@ -115,7 +115,7 @@ export class LambdaStack extends cdk.Stack {
                     effect: iam.Effect.ALLOW,
                     principals: [
                         // Allow access from specific user (for testing)
-                        new iam.ArnPrincipal("arn:aws:iam::086026665560:user/taiger_leo")
+                        new iam.ArnPrincipal("arn:aws:iam::669131042313:user/taiger_leo")
                     ],
                     actions: ["sqs:SendMessage"],
                     resources: [emailQueue.queueArn]
