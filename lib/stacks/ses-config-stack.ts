@@ -3,6 +3,8 @@ import { AwsCustomResource, AwsCustomResourcePolicy } from "aws-cdk-lib/custom-r
 import {
     HostedZone,
     CnameRecord,
+    MxRecord,
+    TxtRecord,
     HostedZoneAttributes,
     IHostedZone
 } from "aws-cdk-lib/aws-route53";
@@ -40,7 +42,8 @@ export class SesConfigStack extends Stack {
 
         console.log("Stack Name: ", this.stackName);
 
-        const { sesAttr, domainAttr } = props;
+        const { sesAttr, domainAttr, env } = props;
+        const { region } = env || {};
         const { emailList, notifList, sendDeliveryNotifications } = sesAttr;
         const { zoneName, hostedZoneId } = domainAttr;
         if (!zoneName) {
@@ -52,6 +55,27 @@ export class SesConfigStack extends Stack {
             this.zone = HostedZone.fromHostedZoneAttributes(this, "zone", {
                 hostedZoneId,
                 zoneName
+            });
+
+            // Add MAIL FROM MX record
+            new MxRecord(this, "MailFromMX", {
+                zone: this.zone,
+                recordName: `mail.${zoneName}`,
+                values: [
+                    {
+                        priority: 10,
+                        hostName: `feedback-smtp.${region}.amazonaws.com`
+                    }
+                ],
+                comment: "SES MAIL FROM MX Record"
+            });
+
+            // Add MAIL FROM TXT record (for SPF)
+            new TxtRecord(this, "MailFromSPF", {
+                zone: this.zone,
+                recordName: `mail.${zoneName}`,
+                values: ["v=spf1 include:amazonses.com ~all"],
+                comment: "SES MAIL FROM SPF Record"
             });
         }
 
