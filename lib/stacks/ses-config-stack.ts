@@ -182,6 +182,23 @@ export class SesConfigStack extends Stack {
             logRetention: 7
         });
         domainIdentity.node.addDependency(configSet);
+
+        // Add custom MAIL FROM configuration
+        new AwsCustomResource(this, "MailFromConfig", {
+            onUpdate: {
+                service: "SESV2",
+                action: "putEmailIdentityMailFromAttributes",
+                parameters: {
+                    EmailIdentity: zoneName,
+                    MailFromDomain: `mail.${zoneName}`,
+                    BehaviorOnMxFailure: "USE_DEFAULT_VALUE"
+                },
+                physicalResourceId: {}
+            },
+            policy: AwsCustomResourcePolicy.fromStatements([sesPolicy]),
+            logRetention: 7
+        });
+
         // Assuming there are always 3 tokens returned as that is what all the docs indicate
         const dkimTokens = [
             domainIdentity.getResponseField("DkimAttributes.Tokens.0"),
