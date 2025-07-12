@@ -1,4 +1,4 @@
-import { AWS_ACCOUNT, DEVELOPER_EMAIL, DOMAIN_NAME, DOMAIN_ZONE_ID } from "../configuration";
+import { AWS_ACCOUNT, DEVELOPER_EMAILS, DOMAIN_NAME, DOMAIN_ZONE_ID } from "../configuration";
 import { Region } from "./regions";
 
 export enum Stage {
@@ -13,9 +13,9 @@ export const STAGES = [
         isProd: false,
         sesAttr: {
             // Email addresses will be added to the verified list and will be sent a confirmation email
-            emailList: [DEVELOPER_EMAIL],
+            emailList: DEVELOPER_EMAILS,
             // Email addresses to subscribe to SNS topic for delivery notifications
-            notifList: [DEVELOPER_EMAIL],
+            notifList: DEVELOPER_EMAILS,
             // Notify on delivery status inc Send, Delivery, Open
             sendDeliveryNotifications: true
         },
@@ -31,7 +31,7 @@ export const STAGES = [
         isProd: true,
         sesAttr: {
             // Email addresses will be added to the verified list and will be sent a confirmation email
-            emailList: [DEVELOPER_EMAIL],
+            emailList: DEVELOPER_EMAILS,
             // Email addresses to subscribe to SNS topic for delivery notifications
             notifList: [],
             // Notify on delivery status inc Send, Delivery, Open

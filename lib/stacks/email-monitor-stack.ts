@@ -6,7 +6,7 @@ import * as sns from "aws-cdk-lib/aws-sns";
 import * as subscriptions from "aws-cdk-lib/aws-sns-subscriptions";
 import * as sqs from "aws-cdk-lib/aws-sqs";
 
-import { APPLICATION_NAME, DEVELOPER_EMAIL } from "../configuration";
+import { APPLICATION_NAME, DEVELOPER_EMAILS } from "../configuration";
 
 interface EmailMonitorStackProps extends cdk.StackProps {
     stageName: string;
@@ -28,8 +28,10 @@ export class EmailMonitorStack extends cdk.Stack {
             }
         );
 
-        // Add email subscription to the SNS topic
-        dlqAlertTopic.addSubscription(new subscriptions.EmailSubscription(DEVELOPER_EMAIL));
+        // Add email subscriptions to the SNS topic
+        for (const email of DEVELOPER_EMAILS) {
+            dlqAlertTopic.addSubscription(new subscriptions.EmailSubscription(email));
+        }
 
         // Create CloudWatch Alarm for DLQ message count
         const messageCountAlarm = new cloudwatch.Alarm(

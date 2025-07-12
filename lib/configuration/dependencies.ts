@@ -5,7 +5,7 @@ export const GITHUB_REPO = "TaiGerPortalEmailService";
 export const GITHUB_OWNER = "LIYUNG";
 export const GITHUB_PACKAGE_BRANCH = "main";
 export const APPLICATION_NAME = "TaiGerPortalEmailService";
-export const DEVELOPER_EMAIL = "taiger.leoc@gmail.com";
+export const DEVELOPER_EMAILS = ["taiger.leoc@gmail.com", "taiger.alexander@gmail.com"];
 
 export const DOMAIN_NAME = "taigerconsultancy-portal.com";
 export const DOMAIN_ZONE_ID = "Z08841911XEWSGPCLIELI";
