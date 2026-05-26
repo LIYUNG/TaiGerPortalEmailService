@@ -4,7 +4,7 @@ import {
     CodePipeline,
     CodePipelineSource,
     ManualApprovalStep,
-    ShellStep
+    CodeBuildStep
 } from "aws-cdk-lib/pipelines";
 import { PipelineType } from "aws-cdk-lib/aws-codepipeline";
 import { Construct } from "constructs";
@@ -18,6 +18,8 @@ import {
 } from "../configuration/dependencies";
 import { PipelineAppStage } from "./app-stage";
 import { STAGES } from "../constants";
+import { RemovalPolicy } from "aws-cdk-lib";
+import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 
 export class PipelineStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -33,14 +35,24 @@ export class PipelineStack extends cdk.Stack {
             }
         );
 
+        const synthStep = new CodeBuildStep("Synth", {
+            input: source,
+            logging: {
+                cloudWatch: {
+                    logGroup: new LogGroup(this, `${APPLICATION_NAME}Synth-LogGroup`, {
+                        logGroupName: `/aws/codepipeline/synth/${APPLICATION_NAME}`,
+                        retention: RetentionDays.THREE_MONTHS,
+                        removalPolicy: RemovalPolicy.DESTROY
+                    })
+                }
+            },
+            commands: ["npm ci", "npm run build", "npx cdk synth"]
+        });
         // Create the high-level CodePipeline
         const pipeline = new CodePipeline(this, `${APPLICATION_NAME}Pipeline`, {
             pipelineName: `${APPLICATION_NAME}Pipeline`,
             pipelineType: PipelineType.V2,
-            synth: new ShellStep("Synth", {
-                input: source,
-                commands: ["npm ci", "npm run build", "npx cdk synth"]
-            }),
+            synth: synthStep,
             codeBuildDefaults: {
                 rolePolicy: [
                     new PolicyStatement({
