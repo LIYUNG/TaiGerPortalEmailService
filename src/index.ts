@@ -65,10 +65,12 @@ export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
                 const emailContent = getEmailContent(emailMessage);
 
                 // Prepare email parameters
+                // TODO: Add Event invitation template
                 const emailParams = {
                     Source: emailMessage.from,
                     Destination: {
                         ToAddresses: [emailMessage.to]
+                        // BccAddresses: []
                     },
                     Message: {
                         Subject: {

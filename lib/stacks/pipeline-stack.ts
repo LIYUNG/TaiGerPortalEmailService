@@ -6,6 +6,7 @@ import {
     ManualApprovalStep,
     ShellStep
 } from "aws-cdk-lib/pipelines";
+import { PipelineType } from "aws-cdk-lib/aws-codepipeline";
 import { Construct } from "constructs";
 
 import {
@@ -35,6 +36,7 @@ export class PipelineStack extends cdk.Stack {
         // Create the high-level CodePipeline
         const pipeline = new CodePipeline(this, `${APPLICATION_NAME}Pipeline`, {
             pipelineName: `${APPLICATION_NAME}Pipeline`,
+            pipelineType: PipelineType.V2,
             synth: new ShellStep("Synth", {
                 input: source,
                 commands: ["npm ci", "npm run build", "npx cdk synth"]
